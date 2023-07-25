@@ -12,6 +12,12 @@ type cacheHandler struct {
 	cache map[string]string
 }
 
+func (c * cacheHandler) loadCache() {
+ // connect to psql
+ // retrieve all data
+ // store in cache map
+}
+
 func (c *cacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   c.mu.Lock()
   defer c.mu.Unlock()
@@ -20,7 +26,6 @@ func (c *cacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   fmt.Println(v)
   if ok {
     w.Write([]byte(v))
-    fmt.Println(v)
   } else {
     // request data
     w.Write([]byte(`{"message": "helloWorld"}`))
@@ -28,21 +33,11 @@ func (c *cacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
   }
 }
 
-func handleHelloWorld(w http.ResponseWriter, r *http.Request) {
-    w.Header().Add("Content-Type", "application/json")
-    w.Write([]byte(`{"message": "helloWorld"}`))
-}
-
-
-func appRouter() http.Handler {
-    rt := http.NewServeMux()
-    // rt.HandleFunc("/helloworld", handleHelloWorld)
-    return rt
-}
 
 func main() {
   cacheHandler := new(cacheHandler)
   cacheHandler.cache = make(map[string]string)
+  cacheHandler.loadCache()
   http.Handle("/data", cacheHandler)
   http.ListenAndServe(":8080", nil) 
 }
