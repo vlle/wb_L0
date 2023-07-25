@@ -14,6 +14,7 @@
 package main
 
 import (
+  "io/ioutil";
 	"flag"
 	"fmt"
 	"log"
@@ -92,7 +93,10 @@ func main() {
 	}
 	defer sc.Close()
 
-	subj, msg := args[0], []byte(args[1])
+  plan, _ := ioutil.ReadFile("../model.json")
+	subj, msg := args[0], plan
+  fmt.Println(plan)
+
 
 	ch := make(chan bool)
 	var glock sync.Mutex
