@@ -1,7 +1,7 @@
 package main
 
 import (
-//	"encoding/json"
+  "encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -36,6 +36,10 @@ func (c *cacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
+type J struct {
+  X map[string]interface{} `json:"-"`
+}
+
 func main() {
   cacheHandler := new(cacheHandler)
   cacheHandler.cache = make(map[string]string)
@@ -46,7 +50,11 @@ func main() {
     return
   }
   go sc.Subscribe("foo", func(m *stan.Msg) {
-    fmt.Printf("Received a message: %s\n", string(m.Data))
+    // type assertions
+    var js J
+    json.Unmarshal(m.Data, &js.X)
+    fmt.Println(js.X)
+    // fmt.Printf("Received a message: %s\n", string(m.Data))
   })
 
   http.Handle("/data", cacheHandler)
