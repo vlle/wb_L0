@@ -23,6 +23,7 @@
     "goods_total": 317,
     "custom_fee": 0
   },
+
   "items": [
     {
       "chrt_id": 9934930,
@@ -38,6 +39,7 @@
       "status": 202
     }
   ],
+
   "locale": "en",
   "internal_signature": "",
   "customer_id": "test",
