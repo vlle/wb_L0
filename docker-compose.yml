@@ -1,0 +1,22 @@
+version: "3.10"
+services:
+  web:
+    build: .
+    depends_on:
+      - db
+      - nats-streaming
+  db:
+    image: postgres:15.3
+    restart: always
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5400:5432" # for debuging purposes
+  nats-streaming:
+    image: redis:6.2.6
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  db_data:
