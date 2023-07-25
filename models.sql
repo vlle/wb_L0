@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS delivery (
   city text NOT NULL,
   address text NOT NULL,
   region text NOT NULL,
-  email text NOT NULL, -- with possible domain
+  email text NOT NULL -- with possible domain
 );
 
 
@@ -23,23 +23,26 @@ CREATE TABLE IF NOT EXISTS payment (
 );
 
 CREATE TABLE IF NOT EXISTS item (
-  chrt_id integer,
-  track_number text,
-  price integer,
-  rid text,
-  name text,
-  sale integer,
-  size text,
-  total_price integer,
-  nm_id integer,
-  brand text,
-  status integer
+  chrt_id integer NOT NULL,
+  track_number text NOT NULL,
+  price integer NOT NULL,
+  rid text NOT NULL,
+  name text NOT NULL,
+  sale integer NOT NULL,
+  size text NOT NULL,
+  total_price integer NOT NULL,
+  nm_id integer NOT NULL,
+  brand text NOT NULL,
+  status integer NOT NULL
 );
 
 
-CREATE TABLE IF NOT EXISTS order (
+CREATE TABLE IF NOT EXISTS orders (
   order_uid   text CONSTRAINT uid PRIMARY KEY,
   track_number text NOT NULL,
+
+
+
   entry text NOT NULL,
   locale text NOT NULL,
   internal_signature text NOT NULL,
@@ -47,8 +50,6 @@ CREATE TABLE IF NOT EXISTS order (
   delivery_service text NOT NULL,
   shardkey text NOT NULL,
   sm_id integer NOT NULL,
-  date_created, timestamp with time zone NOT NULL,
+  date_created timestamp with time zone NOT NULL,
   oof_shard text NOT NULL
 );
-
-
