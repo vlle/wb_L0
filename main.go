@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"github.com/nats-io/stan.go"
+
 )
 
 type cacheHandler struct {
@@ -38,6 +40,15 @@ func main() {
   cacheHandler := new(cacheHandler)
   cacheHandler.cache = make(map[string]string)
   cacheHandler.loadCache()
+  sc, err := stan.Connect("test-cluster", "321", stan.NatsURL("nats://localhost:4222"))
+  if err != nil {
+    fmt.Println(err.Error())
+    return
+  }
+  go sc.Subscribe("foo", func(m *stan.Msg) {
+    fmt.Printf("Received a message: %s\n", string(m.Data))
+  })
+
   http.Handle("/data", cacheHandler)
   http.ListenAndServe(":8080", nil) 
 }
