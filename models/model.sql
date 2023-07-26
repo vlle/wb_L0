@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS delivery (
-  id integer PRIMARY KEY,
+  id serial PRIMARY KEY,
   name text NOT NULL,
   phone text NOT NULL,
   zip text NOT NULL,
@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS payment (
 
 CREATE TABLE IF NOT EXISTS item (
   chrt_id integer PRIMARY KEY,
-
   order_id text NOT NULL,
   track_number text NOT NULL,
   price integer NOT NULL,

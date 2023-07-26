@@ -2,43 +2,43 @@ package server_types
 
 import "time"
 
-type delivery struct {
-  Name string
-  Phone string
-  Zip string
-  City string
-  Address string
-  Region string
-  Email string
+type Delivery struct {
+  Name string `json:"name"`
+  Phone string `json:"phone"`
+  Zip string `json:"zip"`
+  City string `json:"city"`
+  Address string `json:"address"`
+  Region string `json:"region"`
+  Email string `json:"email"`
 }
 
 
-type payment struct {
-  Transaction string
-  Request_id string
-  Currency string
-  Provider string
-  Amount int
-  Payment_dt int64
-  Bank string
-  Delivery_cost int
-  Goods_total int
-  Custom_fee int
+type Payment struct {
+  Transaction string `json:"transaction"`
+  Request_id string `json:"request_id"`
+  Currency string `json:"currency"`
+  Provider string `json:"provider"`
+  Amount int `json:"amount"`
+  Payment_dt int64 `json:"payment_dt"`
+  Bank string `json:"bank"`
+  Delivery_cost int `json:"delivery_cost"`
+  Goods_total int `json:"goods_total"`
+  Custom_fee int `json:"custom_fee"`
 }
 
 
 type Item struct {
-  Chrt_id int
-  Track_number string
-  Price int
-  Rid string
-  Name string
-  Sale int
-  Size string
-  Total_price int
-  Nm_id int
-  Brand string
-  Status int
+  Chrt_id int `json:"chrt_id"`
+  Track_number string `json:"track_number"`
+  Price int `json:"price"`
+  Rid string `json:"rid"`
+  Name string `json:"name"`
+  Sale int `json:"sale"`
+  Size string `json:"size"`
+  Total_price int `json:"total_price"`
+  Nm_id int `json:"nm_id"`
+  Brand string `json:"brand"`
+  Status int `json:"status"`
 }
 
 type Order struct {
@@ -46,8 +46,8 @@ type Order struct {
   Track_number string `json:"track_number"`
   Entry string  `json:"entry"`
 
-  Delivery delivery `json:"delivery"`
-  Payment payment `json:"payment"`
+  Delivery Delivery `json:"delivery"`
+  Payment Payment `json:"payment"`
   Items []Item `json:"items"`
   
 

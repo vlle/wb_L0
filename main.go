@@ -13,6 +13,22 @@ import (
 	models "github.com/vlle/wb_L0/models"
 )
 
+func main() {
+	cacheHandler := new(cacheHandler)
+	cacheHandler.cache = make(map[string][]byte)
+	cacheHandler.loadCache()
+
+	sc, err := stan.Connect("test-cluster", "321", stan.NatsURL("nats://localhost:4222"))
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	sc.Subscribe("foo", saveIncomingData)
+
+	http.Handle("/data", cacheHandler)
+	http.ListenAndServe(":8080", nil)
+}
+
 type cacheHandler struct {
 	mu    sync.RWMutex
 	cache map[string][]byte
@@ -46,7 +62,7 @@ func (c *cacheHandler) loadCache() {
            from orders 
            join delivery on orders.delivery_id = delivery.id
            join payment on orders.order_transaction = payment.transaction`
-  items_stmt := `select chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status from item where chrt_id = $1` 
+	items_stmt := `select chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status from item where chrt_id = $1`
 	rows, err := dbpool.Query(context.Background(), stmt)
 	var order models.Order
 	if err != nil {
@@ -71,43 +87,43 @@ func (c *cacheHandler) loadCache() {
 			fmt.Fprintf(os.Stderr, "QueryRow scan failed: %v\n", err)
 			os.Exit(1)
 		}
-    items_rows, err := dbpool.Query(context.Background(), items_stmt, order.Order_uid)
+		items_rows, err := dbpool.Query(context.Background(), items_stmt, order.Order_uid)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "QueryRow scan failed: %v\n", err)
 			os.Exit(1)
 		}
-    for items_rows.Next() {
-      var item models.Item 
-      err := items_rows.Scan(
-        &item.Chrt_id, &item.Track_number, &item.Price, &item.Rid, &item.Name, &item.Sale, &item.Size, &item.Total_price, &item.Nm_id, &item.Brand, &item.Status,
-      )
-      if err != nil {
-        fmt.Fprintf(os.Stderr, "QueryRow scan failed: %v\n", err)
-        os.Exit(1)
-      }
-      order.Items = append(order.Items, item)
-    }
+		for items_rows.Next() {
+			var item models.Item
+			err := items_rows.Scan(
+				&item.Chrt_id, &item.Track_number, &item.Price, &item.Rid, &item.Name, &item.Sale, &item.Size, &item.Total_price, &item.Nm_id, &item.Brand, &item.Status,
+			)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "QueryRow scan failed: %v\n", err)
+				os.Exit(1)
+			}
+			order.Items = append(order.Items, item)
+		}
 		c.cache[order.Order_uid], err = json.Marshal(order)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "QueryRow marshal failed: %v\n", err)
 			os.Exit(1)
 		}
 	}
-
 }
 
 func (c *cacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	w.Header().Add("Content-Type", "application/json")
+
 	query_parameters := r.URL.Query()
 
-  order_uid, ok := query_parameters["order_uid"]
-  if !ok {
-    w.Write([]byte(`{"message": "order_uid is required"}`))
-    return
-  }
+	order_uid, ok := query_parameters["order_uid"]
+	if !ok {
+		w.Write([]byte(`{"message": "order_uid is required"}`))
+		return
+	}
 	v, ok := c.cache[order_uid[0]]
-	w.Header().Add("Content-Type", "application/json")
 	if ok {
 		w.Write(v)
 	} else {
@@ -115,32 +131,78 @@ func (c *cacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type J struct {
-	X map[string]interface{} `json:"-"`
-}
-
 func saveIncomingData(m *stan.Msg) {
 	var js models.Order
-  err := json.Unmarshal(m.Data, &js)
-  if err != nil {
-    fmt.Println(err.Error())
-    return
-  }
-  // save this stuff by passing by pointer etc
-}
-
-func main() {
-	cacheHandler := new(cacheHandler)
-	cacheHandler.cache = make(map[string][]byte)
-	cacheHandler.loadCache()
-
-	sc, err := stan.Connect("test-cluster", "321", stan.NatsURL("nats://localhost:4222"))
+	err := json.Unmarshal(m.Data, &js)
+	fmt.Println(js)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	sc.Subscribe("foo", saveIncomingData)
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		url = "postgres://postgres:postgres@localhost:5500/rec"
+	}
+	dbpool, err := pgxpool.New(context.Background(), url)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
+		os.Exit(1)
+	}
+	defer dbpool.Close()
+	delivery_id := insertDelivery(dbpool, &js.Delivery)
+	payment_id := insertPayment(dbpool, &js.Payment)
+	order_id := insertOrder(dbpool, &js, delivery_id, payment_id)
+	bulkInsertItems(dbpool, js.Items, order_id)
+}
 
-	http.Handle("/data", cacheHandler)
-	http.ListenAndServe(":8080", nil)
+func insertDelivery(dbpool *pgxpool.Pool, d *models.Delivery) int {
+
+	insert_delivery_stmt := "insert into delivery (name, phone, zip, city, address, region, email) values ($1, $2, $3, $4, $5, $6, $7)"
+	row := dbpool.QueryRow(context.Background(), insert_delivery_stmt, d.Name, d.Phone, d.Zip, d.City, d.Address, d.Region, d.Email)
+	id := 0
+	err := row.Scan(&id)
+	if err != nil {
+		fmt.Println(err.Error(), "delivery")
+	}
+
+	return id
+}
+
+func insertPayment(dbpool *pgxpool.Pool, p *models.Payment) int {
+	insert_payment_stmt := "insert into payment values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+	row := dbpool.QueryRow(context.Background(), insert_payment_stmt, p.Transaction, p.Request_id, p.Currency, p.Provider, p.Amount, p.Payment_dt, p.Bank, p.Delivery_cost, p.Goods_total, p.Custom_fee)
+	id := 0
+
+	err := row.Scan(&id)
+	if err != nil {
+		fmt.Println(err.Error(), "payment")
+	}
+	return id
+}
+
+func bulkInsertItems(dbpool *pgxpool.Pool, items []models.Item, order_id int) []int {
+	insert_items_stmt := "insert into item values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
+	var ids []int
+	for _, item := range items {
+		row := dbpool.QueryRow(context.Background(), insert_items_stmt, item.Chrt_id, order_id, item.Track_number, item.Price, item.Rid, item.Name, item.Sale, item.Size, item.Total_price, item.Nm_id, item.Brand, item.Status)
+		id := 0
+
+		err := row.Scan(&id)
+		if err != nil {
+			fmt.Println(err.Error(), "item")
+		}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func insertOrder(dbpool *pgxpool.Pool, o *models.Order, delivery_id int, payment_id int) int {
+	insert_order_stmt := "insert into orders values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+	row := dbpool.QueryRow(context.Background(), insert_order_stmt, o.Track_number, o.Entry, delivery_id, payment_id, o.Locale, o.Internal_signature, o.Customer_id, o.Delivery_service, o.Shardkey, o.Sm_id)
+	id := 0
+	err := row.Scan(&id)
+	if err != nil {
+		fmt.Println(err.Error(), "order")
+	}
+	return id
 }
