@@ -1,4 +1,5 @@
 CREATE TABLE IF NOT EXISTS delivery (
+  id integer PRIMARY KEY,
   name text NOT NULL,
   phone text NOT NULL,
   zip text NOT NULL,
@@ -10,9 +11,9 @@ CREATE TABLE IF NOT EXISTS delivery (
 
 
 CREATE TABLE IF NOT EXISTS payment (
-  transaction text NOT NULL,
+  transaction text PRIMARY KEY,
   request_id text,
-  currencty text NOT NULL,
+  currency text NOT NULL,
   provider text NOT NULL,
   amount integer NOT NULL,
   payment_dt bigint NOT NULL,
@@ -23,7 +24,9 @@ CREATE TABLE IF NOT EXISTS payment (
 );
 
 CREATE TABLE IF NOT EXISTS item (
-  chrt_id integer NOT NULL,
+  chrt_id integer PRIMARY KEY,
+
+  order_id text NOT NULL,
   track_number text NOT NULL,
   price integer NOT NULL,
   rid text NOT NULL,
@@ -38,12 +41,15 @@ CREATE TABLE IF NOT EXISTS item (
 
 
 CREATE TABLE IF NOT EXISTS orders (
-  order_uid   text CONSTRAINT uid PRIMARY KEY,
+  order_uid   text PRIMARY KEY,
   track_number text NOT NULL,
-
-
-
   entry text NOT NULL,
+
+  delivery_id integer NOT NULL,
+  order_transaction text NOT NULL,
+  FOREIGN KEY (delivery_id) REFERENCES delivery (id),
+  FOREIGN KEY (order_transaction) REFERENCES payment (transaction),
+
   locale text NOT NULL,
   internal_signature text NOT NULL,
   customer_id text NOT NULL,
