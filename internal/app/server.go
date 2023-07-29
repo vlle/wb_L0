@@ -3,20 +3,58 @@ package app
 import (
   "net/http"
   "github.com/vlle/wb_L0/internal/transport"
+  "github.com/vlle/wb_L0/internal/services"
+
+  // "time"
+  "sync"
+	"github.com/nats-io/stan.go"
+	"fmt"
 )
 
-func app() {
-	cacheHandler := new(transport.CacheHandler)
-	cacheHandler.Cache = make(map[string][]byte)
-	cacheHandler.LoadCache()
+func App() {
+
+  var wg sync.WaitGroup
+  wg.Add(2)
+
+  db := services.InitDB()
+  ch := make(chan services.CacheStorage)
+  cacheHandler := transport.NewCacheHandler(ch, db)
+
+
 
 	sc, err := stan.Connect("test-cluster", "321", stan.NatsURL("nats://localhost:4222"))
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	sc.Subscribe("foo", saveIncomingData)
+  sbscr, err := sc.Subscribe("foo", func(m *stan.Msg) {
+    val, err := transport.SaveIncomingData(m, db)
+    fmt.Println("Received from nats")
+    if err != nil {
+      fmt.Println(err.Error(), "error in unmarshalling")
+    } else {
+      fmt.Println("Sending to cache")
+      ch <- val
+    }
+  })
+  if err != nil {
+    fmt.Println(err.Error(), "error in subscription")
+    return
+  }
+  defer sbscr.Unsubscribe()
+  defer sbscr.Close()
 
 	http.Handle("/data", cacheHandler)
-	http.ListenAndServe(":8080", nil)
+
+  go func() {
+    cacheHandler.Listen(ch)
+    wg.Done()
+  }()
+
+	go func() {
+    http.ListenAndServe(":8080", nil)
+    wg.Done()
+  }()
+
+  wg.Wait()
 }
