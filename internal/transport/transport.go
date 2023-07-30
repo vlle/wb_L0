@@ -1,12 +1,12 @@
 package transport
 
 import (
-	"encoding/json"
   "log"
 	"github.com/nats-io/stan.go"
 	database "github.com/vlle/wb_L0/internal/database"
-	models "github.com/vlle/wb_L0/internal/models"
+	models "github.com/vlle/wb_L0/internal/models/codegen_json"
 	service "github.com/vlle/wb_L0/internal/services"
+  ffjson "github.com/pquerna/ffjson/ffjson"
 	"net/http"
 	"sync"
 	"time"
@@ -31,7 +31,7 @@ type MessageHandler struct {
 
 func SaveIncomingData(m *stan.Msg, db database.DB) (service.CacheStorage, error) {
 	var js models.Order
-	err := json.Unmarshal(m.Data, &js)
+	err := ffjson.Unmarshal(m.Data, &js)
 	if err != nil {
     log.Println(err.Error(), "error in unmarshalling")
 		return service.CacheStorage{}, err
