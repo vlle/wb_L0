@@ -7,5 +7,8 @@ import (
 
 
 func main() {
-  app.App()
+  var application app.App
+
+  application.Init()
+  application.Run()
 }
