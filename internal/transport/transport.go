@@ -8,12 +8,10 @@ import (
 	service "github.com/vlle/wb_L0/internal/services"
   ffjson "github.com/pquerna/ffjson/ffjson"
 	"net/http"
-	"sync"
 	"time"
 )
 
 type CacheHandler struct {
-	Mu    sync.RWMutex
 	Cache map[string]service.CacheStorage
 	ch    chan service.CacheStorage
 }
@@ -55,8 +53,6 @@ func (c *CacheHandler) Listen(ch chan service.CacheStorage) {
 }
 
 func (c *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-  c.Mu.RLock()
-  defer c.Mu.RUnlock()
   w.Header().Add("Content-Type", "application/json")
 
   query_parameters := r.URL.Query()

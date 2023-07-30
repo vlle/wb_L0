@@ -124,12 +124,18 @@ func (d *DB) LoadOrders() []models.Order {
 	return orders
 }
 
-func (db *DB) insertDelivery(conn *pgxpool.Pool, d *models.Delivery) int {
+func (db *DB) insertDelivery(pool *pgxpool.Pool, d *models.Delivery) int {
 
+  conn, err := pool.Acquire(context.Background())
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "Unable to acquire connection: %v\n", err)
+    os.Exit(1)
+  }
+  defer conn.Release()
 	insert_delivery_stmt := "insert into delivery (name, phone, zip, city, address, region, email) values ($1, $2, $3, $4, $5, $6, $7) RETURNING id"
 	row := conn.QueryRow(context.Background(), insert_delivery_stmt, d.Name, d.Phone, d.Zip, d.City, d.Address, d.Region, d.Email)
 	id := 0
-	err := row.Scan(&id)
+	err = row.Scan(&id)
 	if err != nil {
 		fmt.Println(err.Error(), "delivery")
 	}
@@ -137,12 +143,18 @@ func (db *DB) insertDelivery(conn *pgxpool.Pool, d *models.Delivery) int {
 	return id
 }
 
-func (db *DB) insertPayment(conn *pgxpool.Pool, p *models.Payment) string {
+func (db *DB) insertPayment(pool *pgxpool.Pool, p *models.Payment) string {
+  conn, err := pool.Acquire(context.Background())
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "Unable to acquire connection: %v\n", err)
+    os.Exit(1)
+  }
+  defer conn.Release()
 	insert_payment_stmt := "insert into payment (transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING transaction"
 	row := conn.QueryRow(context.Background(), insert_payment_stmt, p.Transaction, p.Request_id, p.Currency, p.Provider, p.Amount, p.Payment_dt, p.Bank, p.Delivery_cost, p.Goods_total, p.Custom_fee)
 	transaction := ""
 
-	err := row.Scan(&transaction)
+	err = row.Scan(&transaction)
 	if err != nil {
 		fmt.Println(err.Error(), "payment")
 	}
@@ -150,9 +162,15 @@ func (db *DB) insertPayment(conn *pgxpool.Pool, p *models.Payment) string {
 	return transaction
 }
 
-func (db *DB) bulkInsertItems(conn *pgxpool.Pool, items []models.Item, order_uid string) {
+func (db *DB) bulkInsertItems(pool *pgxpool.Pool, items []models.Item, order_uid string) {
   fmt.Println("bulkInsertItems")
   fmt.Println(items)
+  conn, err := pool.Acquire(context.Background())
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "Unable to acquire connection: %v\n", err)
+    os.Exit(1)
+  }
+  defer conn.Release()
 
   rows_items := make([][]interface{}, len(items))
   for i, item := range items {
@@ -168,12 +186,20 @@ func (db *DB) bulkInsertItems(conn *pgxpool.Pool, items []models.Item, order_uid
 
   if err != nil {
     fmt.Fprintf(os.Stderr, "Unable to COPY: %v\n", err)
+    fmt.Println(items)
+    fmt.Println(order_uid)
     os.Exit(1)
   }
   fmt.Printf("Inserted %v rows of data\n", copyCount)
 }
 
-func (db *DB) insertOrder(conn *pgxpool.Pool, o *models.Order, delivery_id int, payment_id string) {
+func (db *DB) insertOrder(pool *pgxpool.Pool, o *models.Order, delivery_id int, payment_id string) {
+  conn, err := pool.Acquire(context.Background())
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "Unable to acquire connection: %v\n", err)
+    os.Exit(1)
+  }
+  defer conn.Release()
   insert_order_stmt := `insert into 
   orders (order_uid, track_number, entry, delivery_id, order_transaction, locale, internal_signature, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard)
   values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`

@@ -14,12 +14,11 @@
 package main
 
 import (
-  "io/ioutil";
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
-	"sync"
 	"time"
 
 	nats "github.com/nats-io/nats.go"
@@ -37,13 +36,34 @@ Options:
 	-cr, --creds    <credentials>    NATS 2.0 Credentials
 `
 
+const (
+)
+
 // NOTE: Use tls scheme for TLS, e.g. stan-pub -s tls://demo.nats.io:4443 foo hello
 func usage() {
 	fmt.Printf("%s\n", usageStr)
 	os.Exit(0)
 }
 
+func publish(filepath []byte, subj string, sc stan.Conn) {
+  sc.Publish(subj, filepath)
+}
+
+
 func main() {
+  v, _ := os.ReadFile("json_mock/model5.json")
+  j := string(v)
+  formatted_slice := make([][]byte, 0)
+
+  rand.Seed(time.Now().UnixNano())
+  for i := 0; i < 5; i++ { 
+    v := rand.Intn(100000 - 1451) + 3123
+    formatted := fmt.Sprintf(j, v, v)
+    fmt.Println(formatted)
+    formatted_slice = append(formatted_slice, []byte(formatted))
+  }
+  fmt.Println(formatted_slice)
+
 	var (
 		clusterID string
 		clientID  string
@@ -93,51 +113,65 @@ func main() {
 	}
 	defer sc.Close()
 
-  plan, _ := ioutil.ReadFile("../internal/models/model.json")
-	subj, msg := args[0], plan
-  fmt.Println(plan)
-
-
-	ch := make(chan bool)
-	var glock sync.Mutex
-	var guid string
-	acb := func(lguid string, err error) {
-		glock.Lock()
-		log.Printf("Received ACK for guid %s\n", lguid)
-		defer glock.Unlock()
-		if err != nil {
-			log.Fatalf("Error in server ack for guid %s: %v\n", lguid, err)
-		}
-		if lguid != guid {
-			log.Fatalf("Expected a matching guid in ack callback, got %s vs %s\n", lguid, guid)
-		}
-		ch <- true
-	}
-
-	if !async {
-		err = sc.Publish(subj, msg)
-		if err != nil {
-			log.Fatalf("Error during publish: %v\n", err)
-		}
-		log.Printf("Published [%s] : '%s'\n", subj, msg)
-	} else {
-		glock.Lock()
-		guid, err = sc.PublishAsync(subj, msg, acb)
-		if err != nil {
-			log.Fatalf("Error during async publish: %v\n", err)
-		}
-		glock.Unlock()
-		if guid == "" {
-			log.Fatal("Expected non-empty guid to be returned.")
-		}
-		log.Printf("Published [%s] : '%s' [guid: %s]\n", subj, msg, guid)
-
-		select {
-		case <-ch:
-			break
-		case <-time.After(5 * time.Second):
-			log.Fatal("timeout")
-		}
-
-	}
+  subj := args[0]
+  for i := 0; i < 5; i++ {
+    go publish(formatted_slice[i], subj, sc)
+  }
+  time.Sleep(5 * time.Second)
 }
+
+// type Delivery struct {
+// 	Name    string `json:"name"`
+// 	Phone   string `json:"phone"`
+// 	Zip     string `json:"zip"`
+// 	City    string `json:"city"`
+// 	Address string `json:"address"`
+// 	Region  string `json:"region"`
+// 	Email   string `json:"email"`
+// }
+// 
+// type Payment struct {
+// 	Transaction   string `json:"transaction"`
+// 	Request_id    string `json:"request_id"`
+// 	Currency      string `json:"currency"`
+// 	Provider      string `json:"provider"`
+// 	Amount        int    `json:"amount"`
+// 	Payment_dt    int64  `json:"payment_dt"`
+// 	Bank          string `json:"bank"`
+// 	Delivery_cost int    `json:"delivery_cost"`
+// 	Goods_total   int    `json:"goods_total"`
+// 	Custom_fee    int    `json:"custom_fee"`
+// }
+// 
+// type Item struct {
+// 	Chrt_id      int    `json:"chrt_id"`
+// 	Track_number string `json:"track_number"`
+// 	Price        int    `json:"price"`
+// 	Rid          string `json:"rid"`
+// 	Name         string `json:"name"`
+// 	Sale         int    `json:"sale"`
+// 	Size         string `json:"size"`
+// 	Total_price  int    `json:"total_price"`
+// 	Nm_id        int    `json:"nm_id"`
+// 	Brand        string `json:"brand"`
+// 	Status       int    `json:"status"`
+// }
+
+// Order scheme
+
+//	Order_uid    string `json:"order_uid"`
+//	Track_number string `json:"track_number"`
+//	Entry        string `json:"entry"`
+//
+//	Delivery Delivery `json:"delivery"`
+//	Payment  Payment  `json:"payment"`
+//	Items    []Item   `json:"items"`
+//
+//	Locale             string    `json:"locale"`
+//	Internal_signature string    `json:"internal_signature"`
+//	Customer_id        string    `json:"customer_id"`
+//	Delivery_service   string    `json:"delivery_service"`
+//	Shardkey           string    `json:"shardkey"`
+//	Sm_id              int       `json:"sm_id"`
+//	Date_created       time.Time `json:"date_created"`
+//	Oof_shard          string    `json:"oof_shard"`

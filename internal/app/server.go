@@ -5,6 +5,7 @@ import (
 	"github.com/vlle/wb_L0/internal/services"
 	"github.com/vlle/wb_L0/internal/transport"
 
+  "encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -41,36 +42,46 @@ func (a *App) Init() {
 
 
 	a.sbcr, err = a.sc.Subscribe("foo", func(m *stan.Msg) {
-		val, err := transport.SaveIncomingData(m, a.db)
-		fmt.Println("Received from nats")
-		if err != nil {
-			fmt.Println(err.Error(), "error in unmarshalling")
-		} else {
-			fmt.Println("Sending to cache")
-			a.ch <- val
-		}
-	})
-	if err != nil {
-		fmt.Println(err.Error(), "error in subscription")
-		return
-	}
-	http.Handle("/data", a.cacheHandler)
+    fmt.Println("Received from nats")
+    mapD := make(map[string]interface{})
+    err := json.Unmarshal(m.Data, &mapD)
+    if err != nil {
+      fmt.Println(err.Error(), "error in unmarshalling")
+      return
+    }
+    fmt.Println(mapD)
+    go func() {
+      val, err := transport.SaveIncomingData(m, a.db)
+      fmt.Println("Received from nats")
+      if err != nil {
+        fmt.Println(err.Error(), "error in unmarshalling")
+      } else {
+        fmt.Println("Sending to cache")
+        a.ch <- val
+      }
+    }()
+  })
+  if err != nil {
+    fmt.Println(err.Error(), "error in subscription")
+    return
+  }
+  http.Handle("/data", a.cacheHandler)
 }
 
 func (a *App) Run() {
 
-	defer a.sbcr.Unsubscribe()
-	defer a.sbcr.Close()
+  defer a.sbcr.Unsubscribe()
+  defer a.sbcr.Close()
   defer a.db.ClosePool()
 
 
-	go func() {
-		a.cacheHandler.Listen(a.ch)
-	}()
+  go func() {
+    a.cacheHandler.Listen(a.ch)
+  }()
 
-	go func() {
-		http.ListenAndServe(":8080", nil)
-	}()
+  go func() {
+    http.ListenAndServe(":8080", nil)
+  }()
 
   done := make(chan os.Signal, 1)
   signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
