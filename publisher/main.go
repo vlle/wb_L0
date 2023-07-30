@@ -93,7 +93,7 @@ func main() {
 	}
 	defer sc.Close()
 
-  plan, _ := ioutil.ReadFile("../models/model.json")
+  plan, _ := ioutil.ReadFile("../internal/models/model.json")
 	subj, msg := args[0], plan
   fmt.Println(plan)
 

@@ -5,12 +5,14 @@ import (
 	"github.com/vlle/wb_L0/internal/services"
 	"github.com/vlle/wb_L0/internal/transport"
 
-	"net/http"
-
-	// "time"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/nats-io/stan.go"
-	"sync"
 )
 
 type App struct {
@@ -56,22 +58,26 @@ func (a *App) Init() {
 }
 
 func (a *App) Run() {
-	var wg sync.WaitGroup
-	wg.Add(2)
 
 	defer a.sbcr.Unsubscribe()
 	defer a.sbcr.Close()
+  defer a.db.ClosePool()
 
 
 	go func() {
 		a.cacheHandler.Listen(a.ch)
-		wg.Done()
 	}()
 
 	go func() {
 		http.ListenAndServe(":8080", nil)
-		wg.Done()
 	}()
 
-	wg.Wait()
+  done := make(chan os.Signal, 1)
+  signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+  <-done
+
+  log.Print("Server Stopped")
+  log.Print("Server Exited Properly")
+  os.Exit(0)
 }

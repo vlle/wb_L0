@@ -2,7 +2,7 @@ package transport
 
 import (
 	"encoding/json"
-	"fmt"
+  "log"
 	"github.com/nats-io/stan.go"
 	database "github.com/vlle/wb_L0/internal/database"
 	models "github.com/vlle/wb_L0/internal/models"
@@ -33,59 +33,51 @@ func SaveIncomingData(m *stan.Msg, db database.DB) (service.CacheStorage, error)
 	var js models.Order
 	err := json.Unmarshal(m.Data, &js)
 	if err != nil {
-		fmt.Println(err.Error(), "error in unmarshalling")
+    log.Println(err.Error(), "error in unmarshalling")
 		return service.CacheStorage{}, err
-	}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		service.SaveIncomingOrder(js, db)
-		wg.Done()
-	}()
-	wg.Wait()
-	val := service.NewCacheFromData(js)
-	return val, nil
+  }
+  service.SaveIncomingOrder(js, db)
+  val := service.NewCacheFromData(js)
+  return val, nil
 }
 
+// Saves incoming order data to cache
 func (c *CacheHandler) Listen(ch chan service.CacheStorage) {
-	for {
-		time.Sleep(1 * time.Second)
-		fmt.Println("Cache listening (tired)")
-		val := <-ch
-		fmt.Println("Cache received")
-		order_uuid := val.ReturnOrderUUID()
-		c.Cache[order_uuid] = val
-		fmt.Println("Cache updated")
-		fmt.Println(c.Cache)
-	}
+  for {
+    time.Sleep(1 * time.Second)
+    log.Println("Cache listening")
+    val := <-ch
+    log.Println("Cache received")
+    order_uuid := val.ReturnOrderUUID()
+    c.Cache[order_uuid] = val
+    log.Println("Cache updated")
+  }
 }
 
 func (c *CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	c.Mu.RLock()
-	defer c.Mu.RUnlock()
-	w.Header().Add("Content-Type", "application/json")
+  c.Mu.RLock()
+  defer c.Mu.RUnlock()
+  w.Header().Add("Content-Type", "application/json")
 
-	query_parameters := r.URL.Query()
+  query_parameters := r.URL.Query()
 
-	order_uid, ok := query_parameters["order_uid"]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"message": "order_uid is required"}`))
-		return
-	}
-	fmt.Println(order_uid[0])
-	v, ok := c.Cache[order_uid[0]]
-	fmt.Println(c.Cache)
-	if ok {
-		order_data := v.ReturnJson()
-		if order_data == nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"message": "problem with encoding json"}`))
-		} else {
-			w.Write(v.ReturnJson())
-		}
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"message": "order_uid not found"}`))
-	}
+  order_uid, ok := query_parameters["order_uid"]
+  if !ok {
+    w.WriteHeader(http.StatusBadRequest)
+    w.Write([]byte(`{"message": "order_uid is required"}`))
+    return
+  }
+  v, ok := c.Cache[order_uid[0]]
+  if ok {
+    order_data := v.ReturnJson()
+    if order_data == nil {
+      w.WriteHeader(http.StatusInternalServerError)
+      w.Write([]byte(`{"message": "problem with encoding json"}`))
+    } else {
+      w.Write(order_data)
+    }
+  } else {
+    w.WriteHeader(http.StatusNotFound)
+    w.Write([]byte(`{"message": "order_uid not found"}`))
+  }
 }

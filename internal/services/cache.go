@@ -2,7 +2,7 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
+  "log"
 	"github.com/vlle/wb_L0/internal/database"
 	models "github.com/vlle/wb_L0/internal/models"
 	// import "github.com/go-playground/validator/v10"
@@ -34,7 +34,7 @@ func (c *CacheStorage) ReturnJson() []byte {
 	} else {
 		json_data, err := json.Marshal(c.unencoded_data)
 		if err != nil {
-			fmt.Println(err.Error())
+      log.Println("Error marshalling json")
 			return nil
 		}
 		c.json_data = json_data
