@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS payment (
 );
 
 CREATE TABLE IF NOT EXISTS item (
-  order_id text PRIMARY KEY,
+  id serial PRIMARY KEY,
+  order_uid text,
   chrt_id integer NOT NULL,
   track_number text NOT NULL,
   price integer NOT NULL,

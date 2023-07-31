@@ -1,0 +1,15 @@
+<form action="/data" method="get" class="form-example">
+  <div class="form-example">
+    <label for="name">Enter your order_uid: </label>
+    <input type="text" name="order_uid" id="order_uid" required>
+  </div>
+  <div class="form-example">
+    <input type="submit" value="Receive order data!">
+  </div>
+</form>
+
+<script src="https://unpkg.com/htmx.org@1.9.4"></script>
+<!-- have a button POST a click via AJAX -->
+<button hx-post="/data/all" hx-swap="outerHTML">
+  Get list of all orders
+</button>
