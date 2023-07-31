@@ -74,7 +74,6 @@ func (d *DB) LoadOrders() []models.Order {
            join payment on orders.order_transaction = payment.transaction`
 	items_stmt := `select chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status from item where order_id = $1`
 	rows, err := conn.Query(context.Background(), stmt)
-	log.Println(rows)
 	var order models.Order
 	if err != nil {
 		log.Fatal(err)

@@ -59,10 +59,9 @@ func main() {
   for i := 0; i < 5; i++ { 
     v := rand.Intn(100000 - 1451) + 3123
     formatted := fmt.Sprintf(j, v, v)
-    fmt.Println(formatted)
+    fmt.Println("Inserted: ", v)
     formatted_slice = append(formatted_slice, []byte(formatted))
   }
-  fmt.Println(formatted_slice)
 
 	var (
 		clusterID string
