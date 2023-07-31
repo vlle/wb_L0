@@ -72,7 +72,7 @@ func (a *App) Run() {
 
   defer a.sbcr.Unsubscribe()
   defer a.sbcr.Close()
-  defer a.db.ClosePool()
+  defer a.db.Close()
 
 
   go func() {
