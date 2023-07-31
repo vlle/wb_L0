@@ -1,9 +1,9 @@
 package services
 
 import (
-	ffjson "github.com/pquerna/ffjson/ffjson"
+	"encoding/json"
 	"github.com/vlle/wb_L0/internal/database"
-	models "github.com/vlle/wb_L0/internal/models/codegen_json"
+	models "github.com/vlle/wb_L0/internal/models"
 	"log"
 	// import "github.com/go-playground/validator/v10"
 )
@@ -32,7 +32,7 @@ func (c *CacheStorage) ReturnJson() []byte {
 	if c.is_json_ready {
 		return c.json_data
 	} else {
-		json_data, err := ffjson.Marshal(c.unencoded_data)
+		json_data, err := json.Marshal(c.unencoded_data)
 		if err != nil {
 			log.Println("Error marshalling json")
 			return nil

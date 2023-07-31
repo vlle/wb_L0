@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	models "github.com/vlle/wb_L0/internal/models/codegen_json"
+	models "github.com/vlle/wb_L0/internal/models"
 )
 
 type DB struct {

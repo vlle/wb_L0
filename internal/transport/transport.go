@@ -1,14 +1,16 @@
 package transport
 
 import (
-	"github.com/nats-io/stan.go"
-	ffjson "github.com/pquerna/ffjson/ffjson"
-	database "github.com/vlle/wb_L0/internal/database"
-	models "github.com/vlle/wb_L0/internal/models/codegen_json"
-	service "github.com/vlle/wb_L0/internal/services"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/stan.go"
+	ffjson "github.com/pquerna/ffjson/ffjson"
+	database "github.com/vlle/wb_L0/internal/database"
+	models "github.com/vlle/wb_L0/internal/models"
+	service "github.com/vlle/wb_L0/internal/services"
 )
 
 type CacheHandler struct {
@@ -71,6 +73,12 @@ func SaveIncomingData(m *stan.Msg, db database.DB) (service.CacheStorage, error)
 	err := ffjson.Unmarshal(m.Data, &js)
 	if err != nil {
 		log.Println(err.Error(), "error in unmarshalling")
+		return service.CacheStorage{}, err
+	}
+	validator := validator.New()
+	err = validator.Struct(js)
+	if err != nil {
+		log.Println(err.Error(), "error in validation")
 		return service.CacheStorage{}, err
 	}
 	service.SaveIncomingOrder(js, db)
